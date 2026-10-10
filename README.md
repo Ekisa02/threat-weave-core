@@ -1,87 +1,83 @@
 # Sentinel Weave
 
-Sentinel Weave is a modular Solidity project for on-chain cybersecurity threat detection and management. It provides a secure registry for threat reports, an oracle integration model for confirmations, and a lightweight scoring library to prioritize incidents. Built with Hardhat and OpenZeppelin for secure, tested, and extensible smart contract deployments.
+Sentinel Weave is a modular, production-oriented platform for cybersecurity threat detection. It exposes a FastAPI inference service backed by PyTorch models, and includes utilities for dataset loading, training, evaluation, and deployment.
 
-## Architecture (high level)
+Key features
+- Real-time inference API (FastAPI) with clear Pydantic schemas
+- PyTorch-based sequence classifier (LSTM), trainer, and evaluation utilities
+- Modular project layout for model, API, data, and CLI
+- Tests and example data to get started quickly
 
-- contracts/
-  - ThreatRegistry.sol - Core registry storing reported threats, access-controlled operations, and event emission for off-chain ingestion.
-  - ThreatOracle.sol - Minimal oracle adapter with dedicated role to confirm threats on-chain (simulating off-chain detectors/feeds).
-  - ThreatScore.sol - Pure library to derive normalized risk scores from severity, confirmations and age.
+Architecture (high level)
 
-- scripts/
-  - deploy.js - Example deployment script for local and test networks.
+- API Layer (FastAPI)
+  - Accepts structured telemetry/logs or feature vectors
+  - Performs preprocessing and calls the inference module
+  - Returns classification, score, and metadata
 
-- test/
-  - ThreatRegistry.test.js - Comprehensive tests for role management, reporting, confirmation, resolving, and scoring.
+- Inference Layer
+  - Lightweight runtime loader that deserializes a PyTorch model
+  - Handles batching, device placement, and confidence scoring
 
-- docs/
-  - architecture.md - Extended architecture notes and integration guide.
+- Model & Training
+  - Dataset loader (CSV-based) with transforms
+  - Trainer module for training, validation, checkpointing, and metrics
+  - Model architecture placed in core/model.py
 
-## Features
+- Utilities
+  - Configuration, logging, and CLI helpers
+  - Tests to validate API contract and core model behavior
 
-- Role-based access control: ADMIN, REPORTER, ORACLE, ANALYST.
-- Report, update, confirm, and resolve threats with immutable event logs for off-chain consumers.
-- Simple, auditable risk scoring function (severity + confirmations, time decay) as a library for composability.
-- Test-suite with Hardhat, ethers and chai.
+Getting started (quick)
 
-## Installation
+Prerequisites
+- Python 3.9+
+- pip
+- (Optional) CUDA for GPU training
 
-Requirements:
-- Node.js 16+ (recommended 18)
-- npm or yarn
+Installation
 
-1. Clone the repository
+1) Create a virtual environment
 
-   git clone <repo-url>
-   cd sentinel-weave
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-2. Install dependencies
+2) Run the API locally
 
-   npm install
+```bash
+uvicorn src.threatnet.app:app --reload --port 8000
+```
 
-3. Compile contracts
+3) Try an example request
 
-   npx hardhat compile
+```bash
+curl -X POST "http://127.0.0.1:8000/predict" -H "Content-Type: application/json" -d @examples/request_example.json
+```
 
-4. Run tests
+Training a model (example)
 
-   npx hardhat test
+```bash
+python scripts/train.py --data examples/sample_data.csv --out checkpoints/ --epochs 3
+```
 
-## Usage
+Project layout
 
-- Local development: start Hardhat node
+- src/threatnet/: core python package
+  - api/: FastAPI routes and schemas
+  - core/: model, dataset, trainer, inference, utils
+  - config.py: runtime configuration
+  - app.py: FastAPI application
+- scripts/: utilities for training and evaluation
+- tests/: pytest test cases
+- docs/: additional documentation
 
-  npx hardhat node
+Contributing
 
-  In another terminal, deploy to local node:
+Please open issues and PRs. Follow the repository code layout when adding new models or endpoints.
 
-  node scripts/deploy.js
-
-- Interacting with contracts
-  - Use Hardhat console or Ethers.js/Foundry to read events emitted by ThreatRegistry (ThreatReported, ThreatConfirmed, ThreatResolved) to build off-chain analysis pipelines.
-
-## Security considerations
-
-- AccessControl enforces gating of sensitive functions. Carefully manage ADMIN keys.
-- On-chain storage is public. Avoid storing sensitive raw payloads; favour metadata URI pointers (IPFS) when necessary.
-- The scoring function is intentionally simple and auditable; for production use, consider more sophisticated and off-chain ML driven scoring.
-
-## Extensibility
-
-- Plug additional oracle adapters that can call confirmThreat on ThreatRegistry.
-- Add upgradability patterns (UUPS/Proxy) if governance-driven upgrades are needed.
-- Extend threat schema with structured metadata or Merkle-backed proofs for compact on-chain references.
-
-## Files of interest
-
-- contracts/ThreatRegistry.sol
-- contracts/ThreatOracle.sol
-- contracts/ThreatScore.sol
-- test/ThreatRegistry.test.js
-- scripts/deploy.js
-- docs/architecture.md
-
-## License
+License
 
 MIT
