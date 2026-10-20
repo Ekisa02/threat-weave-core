@@ -1,83 +1,85 @@
 # Sentinel Weave
 
-Sentinel Weave is a modular, production-oriented platform for cybersecurity threat detection. It exposes a FastAPI inference service backed by PyTorch models, and includes utilities for dataset loading, training, evaluation, and deployment.
+Sentinel Weave is an AI-powered network security orchestration framework implemented in Solidity using Hardhat and OpenZeppelin. It demonstrates secure, auditable handling of AI-sourced alerts, operator-managed security policies, and tokenized incentives for responders.
 
-Key features
-- Real-time inference API (FastAPI) with clear Pydantic schemas
-- PyTorch-based sequence classifier (LSTM), trainer, and evaluation utilities
-- Modular project layout for model, API, data, and CLI
-- Tests and example data to get started quickly
+## Highlights
 
-Architecture (high level)
+- Oracle-driven alert ingestion (AI systems submit alerts via an authenticated oracle role).
+- Policy/rule lifecycle managed by operators with role-based access control.
+- Tokenized incentive mechanics (ERC20 AlertToken) to reward responders.
+- Modular, test-covered architecture ready for integration with off-chain AI systems and on-chain governance.
 
-- API Layer (FastAPI)
-  - Accepts structured telemetry/logs or feature vectors
-  - Performs preprocessing and calls the inference module
-  - Returns classification, score, and metadata
+## Repository layout
 
-- Inference Layer
-  - Lightweight runtime loader that deserializes a PyTorch model
-  - Handles batching, device placement, and confidence scoring
+- contracts/ - Solidity contracts
+  - AlertToken.sol - ERC20 used for incentive payments
+  - NetworkSecurityManager.sol - Core manager: rules, alerts, roles, rewards
+  - AIOracleMock.sol - Minimal oracle mock used in tests and simulations
 
-- Model & Training
-  - Dataset loader (CSV-based) with transforms
-  - Trainer module for training, validation, checkpointing, and metrics
-  - Model architecture placed in core/model.py
+- scripts/ - convenience scripts
+  - deploy.js - deploy token and manager
+  - simulateAlert.js - simulate an AI oracle submitting alerts
 
-- Utilities
-  - Configuration, logging, and CLI helpers
-  - Tests to validate API contract and core model behavior
+- test/ - automated tests (Hardhat / Mocha / Chai)
+- docs/ - architecture and design notes
+- hardhat.config.js - Hardhat configuration
+- package.json - Node project metadata & dependencies
+- .gitignore - common ignores
 
-Getting started (quick)
+## Architecture
+
+See docs/architecture.md for a component diagram and data flow. In brief:
+
+1. AI system (off-chain) analyzes telemetry and, when it detects an incident that matches an on-chain rule, sends structured alert data to an authorized on-chain oracle (or via a trusted oracle service).
+2. The oracle contract (or an oracle operator) calls NetworkSecurityManager.submitAlert(...). Alerts are stored immutably and emit events for off-chain systems.
+3. Operator roles manage rule creation, updates, and deprecation.
+4. Responders (or automation) can handle alerts; the manager can send token rewards (AlertToken) to responders.
+
+Security & access control are enforced via OpenZeppelin AccessControl.
+
+## Getting started
 
 Prerequisites
-- Python 3.9+
-- pip
-- (Optional) CUDA for GPU training
 
-Installation
+- Node.js (16+ recommended)
+- npm or yarn
 
-1) Create a virtual environment
+Install
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
+1. Install dependencies
 
-2) Run the API locally
+   npm install
 
-```bash
-uvicorn src.threatnet.app:app --reload --port 8000
-```
+2. Compile contracts
 
-3) Try an example request
+   npx hardhat compile
 
-```bash
-curl -X POST "http://127.0.0.1:8000/predict" -H "Content-Type: application/json" -d @examples/request_example.json
-```
+Run tests
 
-Training a model (example)
+   npx hardhat test
 
-```bash
-python scripts/train.py --data examples/sample_data.csv --out checkpoints/ --epochs 3
-```
+Deploy to a local Hardhat node (example)
 
-Project layout
+1. Start a node
 
-- src/threatnet/: core python package
-  - api/: FastAPI routes and schemas
-  - core/: model, dataset, trainer, inference, utils
-  - config.py: runtime configuration
-  - app.py: FastAPI application
-- scripts/: utilities for training and evaluation
-- tests/: pytest test cases
-- docs/: additional documentation
+   npx hardhat node
 
-Contributing
+2. Deploy
 
-Please open issues and PRs. Follow the repository code layout when adding new models or endpoints.
+   node scripts/deploy.js --network localhost
 
-License
+Simulate an alert
 
-MIT
+   node scripts/simulateAlert.js --network localhost
+
+## Design notes & security
+
+- Critical functions are guarded by roles: DEFAULT_ADMIN_ROLE, ORACLE_ROLE, OPERATOR_ROLE.
+- Alerts and rule changes are emitted as events so off-chain AI and operator tooling can monitor and react.
+- Token transfers rely on the manager being pre-funded; minting is controlled by MINTER_ROLE on AlertToken.
+
+For more details, consult docs/architecture.md and the contract NatSpec comments.
+
+## Contributing
+
+Contributions, issues, and feature requests are welcome. Please follow normal repository etiquette and open issues for major changes.

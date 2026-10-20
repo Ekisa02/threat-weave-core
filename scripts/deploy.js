@@ -1,29 +1,32 @@
-const hre = require('hardhat');
+// Simple deploy script for local development
+
+const hre = require("hardhat");
 
 async function main() {
   const [deployer] = await hre.ethers.getSigners();
-  console.log('Deploying contracts with', deployer.address);
 
-  const Registry = await hre.ethers.getContractFactory('ThreatRegistry');
-  const registry = await Registry.deploy();
-  await registry.deployed();
-  console.log('ThreatRegistry deployed to:', registry.address);
+  console.log("Deploying contracts with account:", deployer.address);
 
-  const Oracle = await hre.ethers.getContractFactory('ThreatOracle');
-  const oracle = await Oracle.deploy(registry.address);
-  await oracle.deployed();
-  console.log('ThreatOracle deployed to:', oracle.address);
+  const AlertToken = await hre.ethers.getContractFactory("AlertToken");
+  const token = await AlertToken.deploy("AlertToken", "ALRT", deployer.address);
+  await token.deployed();
+  console.log("AlertToken deployed to:", token.address);
 
-  // Grant roles (example): grant REPORTER_ROLE to deployer for testing/demo
-  const REPORTER_ROLE = await registry.REPORTER_ROLE();
-  const ORACLE_ROLE = await registry.ORACLE_ROLE();
-  const ANALYST_ROLE = await registry.ANALYST_ROLE();
+  const NetworkSecurityManager = await hre.ethers.getContractFactory("NetworkSecurityManager");
+  const manager = await NetworkSecurityManager.deploy(deployer.address, token.address);
+  await manager.deployed();
+  console.log("NetworkSecurityManager deployed to:", manager.address);
 
-  await registry.grantRole(REPORTER_ROLE, deployer.address);
-  await registry.grantRole(ORACLE_ROLE, oracle.address);
-  await registry.grantRole(ANALYST_ROLE, deployer.address);
+  // Grant roles and mint some tokens for the manager
+  const MINTER_ROLE = hre.ethers.utils.keccak256(hre.ethers.utils.toUtf8Bytes("MINTER_ROLE"));
+  await token.connect(deployer).grantRole(MINTER_ROLE, deployer.address);
 
-  console.log('Granted REPORTER_ROLE to deployer and ORACLE_ROLE to oracle contract');
+  // Mint tokens to manager for rewards
+  const mintTx = await token.connect(deployer).mint(manager.address, hre.ethers.utils.parseEther("1000"));
+  await mintTx.wait();
+  console.log("Minted 1000 ALRT to manager");
+
+  console.log("Deployment complete. Owner/Admin:", deployer.address);
 }
 
 main().catch((error) => {

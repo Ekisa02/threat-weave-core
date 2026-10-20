@@ -1,23 +1,36 @@
-# Sentinel Weave Architecture
+# Sentinel Weave — Architecture
 
-This document describes the components and data flow.
+Overview
 
-1) Ingest/API layer
-- FastAPI accepts JSON payloads containing a numerical feature vector or structured telemetry.
-- A Pydantic schema validates incoming requests.
+Sentinel Weave coordinates three classes of participants:
 
-2) Preprocessing
-- Basic validation and shaping of arrays; optional preprocessing hooks can be added.
+- AI Oracle: off-chain AI systems or infrastructure which analyze telemetry and trigger alerts. They are represented on-chain by accounts/contracts that hold ORACLE_ROLE.
+- Operators: human or automated operators who manage rules and handle alerts. They hold OPERATOR_ROLE.
+- Responders: addresses (or contracts) that take remediation actions; they may receive tokenized rewards.
 
-3) Inference
-- ThreatDetector wraps a PyTorch model. On startup, if a checkpoint exists, the model is loaded.
-- For minimal installations where no checkpoint is available, a deterministic stub policy is used (useful for testing).
+Core Components
 
-4) Model
-- SequenceClassifier provides an LSTM/GRU backbone for sequence/time-series style features.
+- AlertToken (ERC20): A utility token used to incentivize responders. Controlled via a MINTER_ROLE so tokens can be provisioned to the manager.
 
-5) Training
-- A CSV dataset loader + training script demonstrate how to train and checkpoint a model.
+- NetworkSecurityManager:
+  - Rules: Represent expected threat policies; owners can create, update, and deactivate rules.
+  - Alerts: Ingested via ORACLE_ROLE; logged on-chain with metadata (evidence hash, score, severity).
+  - Rewards: Manager can be funded with AlertToken and send rewards to responders when operators mark alerts as handled.
+  - Role-based security: DEFAULT_ADMIN_ROLE (owner), ORACLE_ROLE (writers of alerts), OPERATOR_ROLE (managers of rules and handlers of alerts).
 
-6) Monitoring / Metrics
-- Basic logs are emitted. Integrations for Prometheus or tracing can be added by instrumenting routes and trainer.
+Data Flow
+
+1. Rule is created by an operator and receives an id.
+2. Off-chain AI detects an incident and (via an authorized oracle) calls submitAlert(ruleId, evidenceHash, severity, score).
+3. Alert is recorded and an event is emitted for real-time off-chain processing.
+4. Operators review and can call handleAlert(alertId, responder, reward) to mark it handled and optionally transfer tokens as incentive.
+
+Security Considerations
+
+- Validate inputs and guard role-restricted functions.
+- Keep oracle private keys and services secure; on-chain the ORACLE_ROLE is authoritative for alerts.
+- Carefully manage token minting and funding of the manager contract to avoid token leakage.
+
+Extensibility
+
+The design separates the oracle from the core manager so that alternative oracle mechanisms (Chainlink, custom relayers) can be integrated. Policy governance can be layered on top using DAOs or timelocked administration if required.
