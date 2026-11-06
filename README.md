@@ -1,85 +1,99 @@
 # Sentinel Weave
 
-Sentinel Weave is an AI-powered network security orchestration framework implemented in Solidity using Hardhat and OpenZeppelin. It demonstrates secure, auditable handling of AI-sourced alerts, operator-managed security policies, and tokenized incentives for responders.
+Sentinel Weave is a modular, extensible cybersecurity threat detection platform built with Next.js and TypeScript. It provides an API-first ingestion pipeline, a rule-based & simple anomaly detection engine, in-memory stores for fast prototyping, and test coverage to get you started building production-grade detection and alerting systems.
 
-## Highlights
+Key features:
+- Rule-based signature detection (regex/condition rules)
+- Lightweight statistical anomaly detection (running z-score based)
+- Pluggable stores and processing pipeline
+- Next.js API routes for ingestion, rule management, and alerts
+- Typescript-first codebase with unit tests configured (Jest + ts-jest)
 
-- Oracle-driven alert ingestion (AI systems submit alerts via an authenticated oracle role).
-- Policy/rule lifecycle managed by operators with role-based access control.
-- Tokenized incentive mechanics (ERC20 AlertToken) to reward responders.
-- Modular, test-covered architecture ready for integration with off-chain AI systems and on-chain governance.
+Architecture
+------------
 
-## Repository layout
+High-level components:
 
-- contracts/ - Solidity contracts
-  - AlertToken.sol - ERC20 used for incentive payments
-  - NetworkSecurityManager.sol - Core manager: rules, alerts, roles, rewards
-  - AIOracleMock.sol - Minimal oracle mock used in tests and simulations
+- API (Next.js): HTTP endpoints for ingesting events, managing detection rules, and fetching alerts.
+- Detection Engine: Core processing pipeline that evaluates incoming events against rules and anomaly detectors.
+- Store: Pluggable storage (in-memory implementation included) for events, rules and alerts.
+- Utilities: Logging and configuration helpers.
+- Tests: Unit tests for the detection engine and rule evaluation.
 
-- scripts/ - convenience scripts
-  - deploy.js - deploy token and manager
-  - simulateAlert.js - simulate an AI oracle submitting alerts
+ASCII diagram:
 
-- test/ - automated tests (Hardhat / Mocha / Chai)
-- docs/ - architecture and design notes
-- hardhat.config.js - Hardhat configuration
-- package.json - Node project metadata & dependencies
-- .gitignore - common ignores
+  +----------+      +----------------+      +---------+
+  |  Clients | ---> | Next.js / API  | ---> | Engine  | ---> Store
+  +----------+      +----------------+      +---------+
+                               |               |
+                               |               +--> Alert sink/exports
+                               +--> Rule API
 
-## Architecture
+Installation
+------------
 
-See docs/architecture.md for a component diagram and data flow. In brief:
-
-1. AI system (off-chain) analyzes telemetry and, when it detects an incident that matches an on-chain rule, sends structured alert data to an authorized on-chain oracle (or via a trusted oracle service).
-2. The oracle contract (or an oracle operator) calls NetworkSecurityManager.submitAlert(...). Alerts are stored immutably and emit events for off-chain systems.
-3. Operator roles manage rule creation, updates, and deprecation.
-4. Responders (or automation) can handle alerts; the manager can send token rewards (AlertToken) to responders.
-
-Security & access control are enforced via OpenZeppelin AccessControl.
-
-## Getting started
-
-Prerequisites
-
-- Node.js (16+ recommended)
+Requirements:
+- Node.js 18+ (LTS)
 - npm or yarn
 
-Install
+Clone and install:
 
-1. Install dependencies
+1. git clone <repo-url>
+2. cd sentinel-weave
+3. npm install
 
-   npm install
+Configuration
+-------------
+Copy the sample environment file:
 
-2. Compile contracts
+  cp .env.example .env
 
-   npx hardhat compile
+The example contains only non-sensitive defaults. For production, secure secrets and enable persistent storage.
 
-Run tests
+Scripts
+-------
+- npm run dev — run Next.js in development mode
+- npm run build — build the Next.js app
+- npm run start — start the production server (after build)
+- npm run test — run Jest unit tests
+- npm run lint — run ESLint (basic)
+- npm run typecheck — run TypeScript type checks
 
-   npx hardhat test
+Usage
+-----
+Start dev server:
 
-Deploy to a local Hardhat node (example)
+  npm run dev
 
-1. Start a node
+Example ingestion request (JSON):
 
-   npx hardhat node
+POST /api/ingest
+Content-Type: application/json
 
-2. Deploy
+{
+  "id": "evt-123",
+  "source": "firewall-1",
+  "type": "connection",
+  "timestamp": "2026-11-01T12:00:00Z",
+  "message": "Failed login from 10.1.2.3",
+  "metrics": { "login_failures": 1 }
+}
 
-   node scripts/deploy.js --network localhost
+Example CLI curl to fetch alerts:
 
-Simulate an alert
+  curl http://localhost:3000/api/alerts
 
-   node scripts/simulateAlert.js --network localhost
+Extending the project
+---------------------
+- Swap the in-memory store with a persistent store (Postgres, Elastic, DynamoDB).
+- Add advanced ML/streaming detectors (e.g., Kafka + model scoring service).
+- Add authentication, RBAC, and telemetry exports (Prometheus/metrics).
 
-## Design notes & security
+Security notes
+--------------
+- This repository is a reference implementation. It uses in-memory stores and lacks authentication — do not run in production without securing endpoints and using persistent, hardened storage.
+- Sanitize inputs when adding rule patterns that will be compiled into regexes.
 
-- Critical functions are guarded by roles: DEFAULT_ADMIN_ROLE, ORACLE_ROLE, OPERATOR_ROLE.
-- Alerts and rule changes are emitted as events so off-chain AI and operator tooling can monitor and react.
-- Token transfers rely on the manager being pre-funded; minting is controlled by MINTER_ROLE on AlertToken.
-
-For more details, consult docs/architecture.md and the contract NatSpec comments.
-
-## Contributing
-
-Contributions, issues, and feature requests are welcome. Please follow normal repository etiquette and open issues for major changes.
+License
+-------
+MIT

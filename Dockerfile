@@ -1,8 +1,8 @@
-FROM python:3.10-slim
-
+FROM node:18-alpine
 WORKDIR /app
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
-COPY ./src ./src
-EXPOSE 8000
-CMD ["uvicorn", "src.threatnet.app:app", "--host", "0.0.0.0", "--port", "8000"]
+COPY package.json package-lock.json* ./
+RUN npm ci --only=production
+COPY . .
+RUN npm run build
+EXPOSE 3000
+CMD ["npm", "start"]

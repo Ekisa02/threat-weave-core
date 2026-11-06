@@ -1,8 +1,9 @@
 node_modules/
-.cache/
+.next/
+dist/
+build/
 coverage/
-artifacts/
-cache/
 .env
-*.log
-.nyc_output/
+.env.local
+.vscode/
+.DS_Store
