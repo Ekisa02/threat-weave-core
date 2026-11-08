@@ -1,33 +1,25 @@
-export type ISOTimeString = string
+export type Event = {
+  id: string;
+  source: string;
+  timestamp: string; // ISO
+  message: string;
+  meta?: Record<string, any>;
+};
 
-export interface EventPayload {
-  id: string
-  source: string
-  type?: string
-  timestamp: ISOTimeString
-  message: string
-  metrics?: Record<string, number>
-  [key: string]: any
-}
+export type Alert = {
+  id: string;
+  eventId?: string;
+  source: string;
+  severity: 'low' | 'medium' | 'high';
+  reason: string;
+  timestamp: string; // ISO
+  data?: Record<string, any>;
+};
 
-export interface Alert {
-  id: string
-  eventId: string
-  severity: 'low' | 'medium' | 'high'
-  reason: string
-  metadata?: Record<string, any>
-  createdAt: ISOTimeString
-}
-
-export type RuleCondition = 'regex' | 'metric_threshold'
-
-export interface Rule {
-  id: string
-  name: string
-  condition: RuleCondition
-  pattern?: string
-  metric?: string
-  threshold?: number
-  severity?: 'low' | 'medium' | 'high'
-  enabled?: boolean
-}
+export type Rule = {
+  id: string;
+  name: string;
+  description?: string;
+  severity: Alert['severity'];
+  pattern: string; // simple regex string matched against event.message
+};

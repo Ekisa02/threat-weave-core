@@ -1,99 +1,96 @@
 # Sentinel Weave
 
-Sentinel Weave is a modular, extensible cybersecurity threat detection platform built with Next.js and TypeScript. It provides an API-first ingestion pipeline, a rule-based & simple anomaly detection engine, in-memory stores for fast prototyping, and test coverage to get you started building production-grade detection and alerting systems.
+Sentinel Weave is a modular cybersecurity threat detection platform built with Next.js and Node (TypeScript). It provides a lightweight ingestion API, a pluggable detection engine (rule-based + simple anomaly detector), alert management with an optional Postgres backend, and a minimal UI to inspect alerts. The project is structured to be production-ready and easy to extend with additional detectors, persistence adapters, or orchestration (Redis/Bull, external ML models).
 
-Key features:
-- Rule-based signature detection (regex/condition rules)
-- Lightweight statistical anomaly detection (running z-score based)
-- Pluggable stores and processing pipeline
-- Next.js API routes for ingestion, rule management, and alerts
-- Typescript-first codebase with unit tests configured (Jest + ts-jest)
+## Architecture Overview
 
-Architecture
-------------
+- Frontend: Next.js pages (React) for viewing alerts and health.
+- API: Next.js API routes for ingestion and alert retrieval.
+- Detection Engine (lib/detectors): pluggable detectors (ruleEngine, anomalyDetector). Each detector processes events and emits Alert objects.
+- Alert Store (lib/alertStore): in-memory store with an optional Postgres adapter (lib/db.ts) for persistence.
+- Worker (lib/worker.ts): simple background processor that drains the ingest queue and runs detectors. Designed for replacement with a queue system like Bull/BullMQ + Redis.
+- Types: centralized TypeScript types in lib/types.ts.
 
-High-level components:
+Sequence:
+1. Events are POSTed to /api/ingest.
+2. Events are queued in memory (lib/ingest.ts).
+3. A background worker processes queued events, runs detectors, and stores alerts.
+4. Alerts are available via /api/alerts and a simple UI at the root URL.
 
-- API (Next.js): HTTP endpoints for ingesting events, managing detection rules, and fetching alerts.
-- Detection Engine: Core processing pipeline that evaluates incoming events against rules and anomaly detectors.
-- Store: Pluggable storage (in-memory implementation included) for events, rules and alerts.
-- Utilities: Logging and configuration helpers.
-- Tests: Unit tests for the detection engine and rule evaluation.
+## Features
 
-ASCII diagram:
+- Pluggable detectors: add new detectors under src/lib/detectors.
+- Simple anomaly detector using sliding-window counts.
+- Extensible alert store with Postgres adapter (optional).
+- Jest tests for detectors.
+- Dockerfile + docker-compose for local dev including Postgres.
 
-  +----------+      +----------------+      +---------+
-  |  Clients | ---> | Next.js / API  | ---> | Engine  | ---> Store
-  +----------+      +----------------+      +---------+
-                               |               |
-                               |               +--> Alert sink/exports
-                               +--> Rule API
-
-Installation
-------------
+## Quickstart (local)
 
 Requirements:
-- Node.js 18+ (LTS)
-- npm or yarn
+- Node 16+ (or compatible)
+- Docker & docker-compose (optional if you want Postgres)
 
-Clone and install:
+Install and run:
 
-1. git clone <repo-url>
-2. cd sentinel-weave
-3. npm install
+1. Install dependencies
 
-Configuration
--------------
-Copy the sample environment file:
+```bash
+npm install
+```
 
-  cp .env.example .env
+2. Start in development mode
 
-The example contains only non-sensitive defaults. For production, secure secrets and enable persistent storage.
+```bash
+npm run dev
+```
 
-Scripts
--------
-- npm run dev — run Next.js in development mode
-- npm run build — build the Next.js app
-- npm run start — start the production server (after build)
-- npm run test — run Jest unit tests
-- npm run lint — run ESLint (basic)
-- npm run typecheck — run TypeScript type checks
+3. Ingest an event (example)
 
-Usage
------
-Start dev server:
+```bash
+curl -X POST http://localhost:3000/api/ingest \
+  -H "Content-Type: application/json" \
+  -d '{"id":"evt-1","source":"app-frontend","timestamp":"2026-01-01T12:00:00Z","message":"Failed login for admin from 1.2.3.4","meta":{"ip":"1.2.3.4","user":"admin"}}'
+```
 
-  npm run dev
+4. View alerts
 
-Example ingestion request (JSON):
+Open http://localhost:3000 to see the alert list, or fetch via API:
 
-POST /api/ingest
-Content-Type: application/json
+```bash
+curl http://localhost:3000/api/alerts
+```
 
-{
-  "id": "evt-123",
-  "source": "firewall-1",
-  "type": "connection",
-  "timestamp": "2026-11-01T12:00:00Z",
-  "message": "Failed login from 10.1.2.3",
-  "metrics": { "login_failures": 1 }
-}
+## Docker Compose (optional)
 
-Example CLI curl to fetch alerts:
+There is a docker-compose.yml that sets up a web service and a Postgres database. To boot everything:
 
-  curl http://localhost:3000/api/alerts
+```bash
+docker-compose up --build
+```
 
-Extending the project
----------------------
-- Swap the in-memory store with a persistent store (Postgres, Elastic, DynamoDB).
-- Add advanced ML/streaming detectors (e.g., Kafka + model scoring service).
-- Add authentication, RBAC, and telemetry exports (Prometheus/metrics).
+Configure database settings via .env (see .env.example).
 
-Security notes
---------------
-- This repository is a reference implementation. It uses in-memory stores and lacks authentication — do not run in production without securing endpoints and using persistent, hardened storage.
-- Sanitize inputs when adding rule patterns that will be compiled into regexes.
+## Development Notes
 
-License
--------
-MIT
+- Add detectors in src/lib/detectors and register them in src/lib/worker.ts (or integrate with a registry).
+- Alert persistence is optional; if DATABASE_URL is set, alerts will be persisted to Postgres via a minimal adapter in lib/db.ts.
+- Replace the in-memory queue with a robust queue (Bull/BullMQ) for high-throughput ingestion.
+
+## Testing
+
+Run unit tests with:
+
+```bash
+npm test
+```
+
+## Project Layout
+
+- src/pages - Next.js pages and API routes
+- src/lib - core logic: detectors, ingest, alert store, db adapter, worker
+- tests - unit tests for detection logic
+
+## Contributing
+
+Contributions welcome. Keep detectors small and idempotent; ensure alerts are well-typed. Add tests for new detection modules.

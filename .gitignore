@@ -1,9 +1,14 @@
 node_modules/
 .next/
-dist/
-build/
-coverage/
 .env
 .env.local
-.vscode/
 .DS_Store
+dist/
+coverage/
+*.log
+
+# Docker
+docker-compose.override.yml
+
+# TypeScript
+*.tsbuildinfo

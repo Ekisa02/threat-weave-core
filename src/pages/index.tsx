@@ -1,15 +1,41 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react';
+
+type Alert = {
+  id: string;
+  severity: 'low'|'medium'|'high';
+  source: string;
+  reason: string;
+  timestamp: string;
+};
 
 export default function Home() {
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+
+  useEffect(() => {
+    fetch('/api/alerts')
+      .then(r => r.json())
+      .then(setAlerts)
+      .catch(() => setAlerts([]));
+  }, []);
+
   return (
-    <main style={{ fontFamily: 'Arial, sans-serif', padding: 24 }}>
-      <h1>Sentinel Weave</h1>
-      <p>Lightweight threat detection prototype. Use the API endpoints to ingest events and query alerts.</p>
-      <ul>
-        <li>POST /api/ingest — ingest event</li>
-        <li>GET /api/alerts — fetch alerts</li>
-        <li>GET/POST /api/rules — list and create rules</li>
-      </ul>
-    </main>
-  )
+    <div style={{fontFamily: 'Inter, system-ui', padding: 20}}>
+      <h1>Sentinel Weave — Alerts</h1>
+      <p>Simple alert viewer. Built for demonstration; integrate with your SIEM/console for production.</p>
+      <div>
+        {alerts.length === 0 ? (
+          <p>No alerts</p>
+        ) : (
+          <ul>
+            {alerts.map(a => (
+              <li key={a.id} style={{marginBottom: 10}}>
+                <strong>[{a.severity}]</strong> <em>{a.source}</em> — {a.reason} <br/>
+                <small>{new Date(a.timestamp).toLocaleString()}</small>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
 }
